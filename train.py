@@ -20,7 +20,7 @@ from nets import NET_CHOICES
 from heads import HEAD_CHOICES
 
 config = tf.ConfigProto()
-config.gpu_options.allow_growth = True
+config.gpu_options.allow_growth = True  # 动态申请显存，需要多少就申请多少
 
 parser = ArgumentParser(description='Train a ReID network.')
 
@@ -241,7 +241,7 @@ def main():
         log.error("You did not specify the required `image_root` argument!")
         sys.exit(1)
 
-    # Load the data from the CSV file.
+    # Load the data from the TxT file. see Common.load_dataset function for details
     pids, fids = common.load_dataset(args.train_set, args.image_root)
     max_fid_len = max(map(len, fids))  # We'll need this later for logfiles.
 
@@ -258,7 +258,8 @@ def main():
 
     # For every PID, get K images.
     dataset = dataset.map(lambda pid: sample_k_fids_for_pid(
-        pid, all_fids=fids, all_pids=pids, batch_k=args.batch_k))
+        pid, all_fids=fids, all_pids=pids, batch_k=args.batch_k))  # now the dataset has been modified as [selected_fids
+    # , pid] due to the return of the function 'sample_k_fids_for_pid'
 
     # Ungroup/flatten the batches for easy loading of the files.
     dataset = dataset.apply(tf.contrib.data.unbatch())
@@ -346,15 +347,17 @@ def main():
 
     # Define the optimizer and the learning-rate schedule.
     # Unfortunately, we get NaNs if we don't handle no-decay separately.
-    global_step = tf.Variable(0, name='global_step', trainable=False)
+    global_step = tf.Variable(0, name='global_step', trainable=False)  # 'global_step' means the number of batches seen
+                                                                       #  by graph
     if 0 <= args.decay_start_iteration < args.train_iterations:
         learning_rate = tf.train.exponential_decay(
             args.learning_rate,
-            tf.maximum(0, global_step - args.decay_start_iteration),
+            tf.maximum(0, global_step - args.decay_start_iteration),  # decay every 'lr_decay_steps' after the
+                                                                      # 'decay_start_iteration'
             # args.train_iterations - args.decay_start_iteration, args.weight_decay_factor)
             args.lr_decay_steps, args.lr_decay_factor, staircase=True)
     else:
-        learning_rate = args.learning_rate
+        learning_rate = args.learning_rate  # the case when we set 'decay_start_iteration' as -1
     tf.summary.scalar('learning_rate', learning_rate)
     optimizer = tf.train.AdamOptimizer(learning_rate)
     # Feel free to try others!
@@ -379,7 +382,7 @@ def main():
             sess.run(tf.global_variables_initializer())
             if args.initial_checkpoint is not None:
                 saver = tf.train.Saver(model_variables)
-                saver.restore(sess, args.initial_checkpoint)
+                saver.restore(sess, args.initial_checkpoint)  # restore the pre-trained parameter from online model
 
             # In any case, we also store this initialization as a checkpoint,
             # such that we could run exactly reproduceable experiments.

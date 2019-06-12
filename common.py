@@ -116,8 +116,26 @@ def load_dataset(csv_file, image_root, fail_on_missing=True):
     Raises:
         IOError if any one file is missing and `fail_on_missing` is True.
     """
-    dataset = np.genfromtxt(csv_file, delimiter=',', dtype='|U')
-    pids, fids = dataset.T
+
+
+
+
+    ##here the csv_file is the TXT file in this case
+    pids = []
+    fids = []
+    with open(csv_file) as doc:
+        lines = doc.readlines()
+        for line in lines:
+            line = line.strip().split(' ')
+            pids.append(line[1])
+            fids.append(line[0])
+
+    # dataset = np.genfromtxt(csv_file, delimiter=',', dtype='|U')
+    # pids, fids = dataset.T
+
+
+
+
 
     # Possibly check if all files exist
     if image_root is not None:
